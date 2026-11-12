@@ -1,0 +1,10 @@
+[package]
+name = "ferro-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+log = "0.4.35"
+retour = "=0.4.0-alpha.4"
+thiserror = "2.0.21"

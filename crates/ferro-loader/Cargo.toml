@@ -1,0 +1,12 @@
+[package]
+name = "ferro-loader"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = "1.0.104"
+ctor = "1.0.13"
+ferro-core = { version = "0.1.0", path = "../ferro-core" }
+ferro-plugin-host = { version = "0.1.0", path = "../ferro-plugin-host" }
+log = "0.4.35"
