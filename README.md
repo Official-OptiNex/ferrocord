@@ -171,12 +171,52 @@ A plugin is a folder with a `manifest.json` and a `plugin.wasm`:
 }
 ```
 
-The plugin exports a few functions and can call back into ferrocord:
+The easiest way to write the `.wasm` is with [`ferrocord-sdk`](crates/ferrocord-sdk), which hides the raw
+WebAssembly ABI behind a small trait:
+
+```rust
+use ferrocord_sdk::{anyhow, export_plugin, log, Context, Event, Plugin};
+
+struct Hello {
+    events: u32,
+}
+
+impl Plugin for Hello {
+    fn init(_cx: &mut Context) -> anyhow::Result<Self> {
+        log::info!("hello from a Rust plugin!");
+        Ok(Self { events: 0 })
+    }
+
+    fn on_event(&mut self, _cx: &mut Context, event: Event) {
+        self.events += 1;
+        if let Event::MessageCreate { author_id, content, .. } = event {
+            log::info!("message from {author_id}: {content}");
+        }
+    }
+}
+
+export_plugin!(Hello);
+```
+
+Build it for WebAssembly and install it:
+
+```bash
+cargo build --release --target wasm32-unknown-unknown
+cp target/wasm32-unknown-unknown/release/hello_plugin.wasm plugin.wasm
+ferrocord install .
+```
+
+Because the SDK stubs the host on non-wasm targets, you can even unit-test your plugin's logic with a plain
+`cargo test`. See [`examples/hello-plugin`](examples/hello-plugin) for the full plugin.
+
+<details>
+<summary><b>Writing a plugin without the SDK</b></summary>
+
+Any language that compiles to WebAssembly can be a plugin by exporting the raw entry points directly:
 
 ```rust
 #[no_mangle]
 pub extern "C" fn ferro_init() -> i32 {
-    ferro::info("hello from a Rust plugin!");
     0 // non-zero = failed to start
 }
 
@@ -186,14 +226,7 @@ pub extern "C" fn ferro_on_event(ptr: *mut u8, len: usize) {
 }
 ```
 
-Build it for WebAssembly:
-
-```bash
-cargo build --release --target wasm32-unknown-unknown
-```
-
-See [`examples/hello-plugin`](examples/hello-plugin) for the full source and
-[`ferro-plugin-api`](crates/ferro-plugin-api/src/lib.rs) for the ABI reference.
+</details>
 
 <details>
 <summary><b>Plugin ABI v1 reference</b></summary>
@@ -230,6 +263,7 @@ ferrocord/
 │   ├── ferro-core/          # scanner, memory regions, signatures, hooks, paths
 │   ├── ferro-plugin-api/    # manifest, events and the plugin ABI
 │   ├── ferro-plugin-host/   # wasmtime-based sandboxed plugin runtime
+│   ├── ferrocord-sdk/       # write plugins in safe Rust (no raw ABI)
 │   ├── ferro-loader/        # library injected into the client (.dll / .so)
 │   └── ferro-launcher/      # the `ferrocord` command-line tool and Windows injector
 └── examples/

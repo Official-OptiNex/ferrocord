@@ -1,0 +1,13 @@
+[package]
+name = "ferrocord-sdk"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Write ferrocord plugins in safe Rust without hand-rolling the WASM ABI"
+repository.workspace = true
+
+[dependencies]
+anyhow = { version = "1.0.104", default-features = false }
+ferro-plugin-api = { workspace = true }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

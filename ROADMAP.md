@@ -32,7 +32,8 @@ merged and tested.
 
 ## Phase 3: Plugin SDK
 
-- ⬜ `ferrocord-sdk` crate so plugins avoid hand-written `extern` functions
+- ✅ `ferrocord-sdk` crate so plugins avoid hand-written `extern` functions
+- ✅ Native log capture so plugin logic can be unit-tested off-wasm
 - ⬜ Plugin settings stored by the host
 - ⬜ Permission system (plugins request capabilities in their manifest)
 - ⬜ Host calls back into the client (send message, open view, …)

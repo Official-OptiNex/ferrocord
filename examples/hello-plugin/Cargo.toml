@@ -9,6 +9,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
+ferrocord-sdk = { path = "../../crates/ferrocord-sdk" }
 serde_json = "1"
 
 [profile.release]
