@@ -145,6 +145,9 @@ INFO  plugin: [hello] got event `ready`
 | `ferrocord launch [client] [-- args]` | Start the client with ferrocord loaded |
 | `ferrocord inject [name or PID]` | 🪟 Load into a running client (default `Discord.exe`) |
 | `ferrocord install <dir>` | Install a plugin folder (`manifest.json` + `plugin.wasm`) |
+| `ferrocord list` | List installed plugins and whether each is enabled |
+| `ferrocord enable <id>` / `disable <id>` | Turn a plugin on or off (disabled plugins stay installed) |
+| `ferrocord remove <id>` | Uninstall a plugin |
 | `ferrocord doctor` | Check the loader, signatures and installed plugins |
 | `ferrocord paths` | Show where data, plugins, signatures and logs live |
 

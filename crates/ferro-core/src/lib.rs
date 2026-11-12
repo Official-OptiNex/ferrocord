@@ -4,12 +4,14 @@
 //! byte signatures (see [`scanner`]) inside the executable's memory (see
 //! [`memory`]) and then detoured via [`hooks`].
 
+pub mod config;
 pub mod hooks;
 pub mod memory;
 pub mod paths;
 pub mod scanner;
 pub mod signatures;
 
+pub use config::PluginConfig;
 pub use hooks::HookManager;
 pub use scanner::Pattern;
 pub use signatures::{Signature, SignatureSet};

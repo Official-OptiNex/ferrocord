@@ -122,15 +122,28 @@ impl PluginHost {
     /// Loads every plugin directory under `root`. Failures are logged and
     /// skipped so one broken plugin can't block the rest.
     pub fn load_all(&mut self, root: &Path) -> usize {
+        self.load_all_filtered(root, |_| true)
+    }
+
+    /// Like [`load_all`](Self::load_all) but skips a directory whose plugin id
+    /// (its folder name) fails `enabled`.
+    pub fn load_all_filtered(&mut self, root: &Path, enabled: impl Fn(&str) -> bool) -> usize {
         let Ok(entries) = std::fs::read_dir(root) else { return 0 };
         let mut dirs: Vec<_> = entries.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
         dirs.sort();
         dirs.iter()
-            .filter(|dir| match self.load_dir(dir) {
-                Ok(_) => true,
-                Err(e) => {
-                    log::error!("skipping plugin at {}: {e:#}", dir.display());
-                    false
+            .filter(|dir| {
+                let id = dir.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                if !enabled(&id) {
+                    log::info!("skipping disabled plugin `{id}`");
+                    return false;
+                }
+                match self.load_dir(dir) {
+                    Ok(_) => true,
+                    Err(e) => {
+                        log::error!("skipping plugin at {}: {e:#}", dir.display());
+                        false
+                    }
                 }
             })
             .count()

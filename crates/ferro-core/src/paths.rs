@@ -50,6 +50,10 @@ pub fn signatures_file() -> PathBuf {
     data_dir().join("signatures.txt")
 }
 
+pub fn plugins_config_file() -> PathBuf {
+    data_dir().join("plugins.json")
+}
+
 pub fn log_file() -> PathBuf {
     data_dir().join("ferrocord.log")
 }

@@ -10,7 +10,7 @@
 
 mod logger;
 
-use ferro_core::{memory, paths, HookManager, SignatureSet};
+use ferro_core::{memory, paths, HookManager, PluginConfig, SignatureSet};
 use ferro_plugin_api::Event;
 use ferro_plugin_host::PluginHost;
 use std::collections::HashMap;
@@ -62,7 +62,11 @@ fn init(exe: &str) -> anyhow::Result<()> {
     let mut plugins = PluginHost::new()?;
     let plugins_dir = paths::plugins_dir();
     std::fs::create_dir_all(&plugins_dir)?;
-    let loaded = plugins.load_all(&plugins_dir);
+    let config = PluginConfig::load(&paths::plugins_config_file()).unwrap_or_else(|e| {
+        log::error!("bad plugins config, treating all as enabled: {e}");
+        PluginConfig::default()
+    });
+    let loaded = plugins.load_all_filtered(&plugins_dir, |id| config.is_enabled(id));
     log::info!("{loaded} plugin(s) loaded from {}", plugins_dir.display());
 
     let addresses = resolve_signatures(exe);

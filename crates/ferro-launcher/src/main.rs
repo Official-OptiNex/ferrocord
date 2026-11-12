@@ -2,7 +2,7 @@
 
 use anyhow::{bail, Context, Result};
 use clap::{Parser, Subcommand};
-use ferro_core::{paths, SignatureSet};
+use ferro_core::{paths, PluginConfig, SignatureSet};
 use ferro_plugin_api::{Manifest, MANIFEST_FILE, WASM_FILE};
 use std::path::{Path, PathBuf};
 
@@ -48,6 +48,14 @@ enum Command {
     },
     /// Install a plugin directory (containing manifest.json and plugin.wasm).
     Install { plugin: PathBuf },
+    /// List installed plugins and whether each is enabled.
+    List,
+    /// Enable an installed plugin by id.
+    Enable { id: String },
+    /// Disable an installed plugin by id (keeps it installed).
+    Disable { id: String },
+    /// Uninstall a plugin by id.
+    Remove { id: String },
     /// Check the setup and list installed plugins.
     Doctor,
     /// Print the data, plugins, signatures and log paths.
@@ -92,6 +100,10 @@ fn run(cli: Cli) -> Result<()> {
         }
         Command::Inject { target, loader } => inject(&target, loader),
         Command::Install { plugin } => install(&plugin),
+        Command::List => list(),
+        Command::Enable { id } => set_enabled(&id, true),
+        Command::Disable { id } => set_enabled(&id, false),
+        Command::Remove { id } => remove(&id),
         Command::Doctor => doctor(),
         Command::Paths => {
             println!("data        {}", paths::data_dir().display());
@@ -246,6 +258,68 @@ fn install(src: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Installed plugin directories, sorted by id (folder name).
+fn installed_plugins() -> Vec<(String, PathBuf)> {
+    let mut out: Vec<(String, PathBuf)> = std::fs::read_dir(paths::plugins_dir())
+        .map(|rd| {
+            rd.flatten()
+                .map(|e| e.path())
+                .filter(|p| p.is_dir())
+                .filter_map(|p| p.file_name().map(|n| (n.to_string_lossy().into_owned(), p.clone())))
+                .collect()
+        })
+        .unwrap_or_default();
+    out.sort();
+    out
+}
+
+fn list() -> Result<()> {
+    let config = PluginConfig::load(&paths::plugins_config_file())?;
+    let plugins = installed_plugins();
+    if plugins.is_empty() {
+        println!("no plugins installed in {}", paths::plugins_dir().display());
+        return Ok(());
+    }
+    for (id, dir) in plugins {
+        let state = if config.is_enabled(&id) { "enabled " } else { "disabled" };
+        match read_manifest(&dir) {
+            Ok(m) => println!("[{state}] {id}  {} v{}", m.name, m.version),
+            Err(e) => println!("[{state}] {id}  (invalid: {e})"),
+        }
+    }
+    Ok(())
+}
+
+fn set_enabled(id: &str, enabled: bool) -> Result<()> {
+    if !paths::plugins_dir().join(id).is_dir() {
+        bail!("no plugin named `{id}`; run `ferrocord list` to see installed plugins");
+    }
+    let path = paths::plugins_config_file();
+    let mut config = PluginConfig::load(&path)?;
+    if config.set_enabled(id, enabled) {
+        config.save(&path)?;
+        println!("{} `{id}`", if enabled { "enabled" } else { "disabled" });
+    } else {
+        println!("`{id}` was already {}", if enabled { "enabled" } else { "disabled" });
+    }
+    Ok(())
+}
+
+fn remove(id: &str) -> Result<()> {
+    let dir = paths::plugins_dir().join(id);
+    if !dir.is_dir() {
+        bail!("no plugin named `{id}`");
+    }
+    std::fs::remove_dir_all(&dir)?;
+    let path = paths::plugins_config_file();
+    let mut config = PluginConfig::load(&path)?;
+    if config.set_enabled(id, true) {
+        config.save(&path)?;
+    }
+    println!("removed `{id}`");
+    Ok(())
+}
+
 fn doctor() -> Result<()> {
     let ok = |b: bool| if b { "ok  " } else { "MISS" };
     let loader = default_loader().filter(|p| p.is_file());
@@ -264,16 +338,19 @@ fn doctor() -> Result<()> {
         Err(_) => println!("[MISS] signatures  none at {} (hooks stay off)", sig_path.display()),
     }
 
-    let plugins_dir = paths::plugins_dir();
-    let mut dirs: Vec<_> = std::fs::read_dir(&plugins_dir)
-        .map(|rd| rd.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect())
-        .unwrap_or_default();
-    dirs.sort();
-    println!("[{}] plugins     {} in {}", ok(!dirs.is_empty()), dirs.len(), plugins_dir.display());
-    for dir in dirs {
+    let config = PluginConfig::load(&paths::plugins_config_file()).unwrap_or_default();
+    let plugins = installed_plugins();
+    println!(
+        "[{}] plugins     {} in {}",
+        ok(!plugins.is_empty()),
+        plugins.len(),
+        paths::plugins_dir().display()
+    );
+    for (id, dir) in plugins {
+        let state = if config.is_enabled(&id) { "enabled " } else { "disabled" };
         match read_manifest(&dir) {
-            Ok(m) => println!("         - {} v{} ({})", m.name, m.version, m.id),
-            Err(e) => println!("         - {}: {e:#}", dir.display()),
+            Ok(m) => println!("         - [{state}] {} v{} ({id})", m.name, m.version),
+            Err(e) => println!("         - [{state}] {}: {e:#}", dir.display()),
         }
     }
     Ok(())
