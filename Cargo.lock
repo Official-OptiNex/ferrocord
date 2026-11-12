@@ -525,6 +525,7 @@ dependencies = [
  "log",
  "retour",
  "thiserror 2.0.21",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -536,6 +537,8 @@ dependencies = [
  "ferro-core",
  "ferro-plugin-api",
  "serde_json",
+ "tempfile",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

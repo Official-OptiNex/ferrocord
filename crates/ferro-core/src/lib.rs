@@ -18,6 +18,8 @@ pub use signatures::{Signature, SignatureSet};
 pub enum Error {
     #[error("invalid pattern: {0}")]
     InvalidPattern(String),
+    #[error("invalid PE image: {0}")]
+    InvalidPe(String),
     #[error("module not found: {0}")]
     ModuleNotFound(String),
     #[error("signature `{0}` not found")]

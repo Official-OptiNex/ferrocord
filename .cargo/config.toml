@@ -1,0 +1,6 @@
+# Cross-compiling for Windows from Linux (MinGW + Wine):
+#   cargo build --target x86_64-pc-windows-gnu
+#   cargo test  --target x86_64-pc-windows-gnu
+[target.x86_64-pc-windows-gnu]
+linker = "x86_64-w64-mingw32-gcc"
+runner = "wine64"

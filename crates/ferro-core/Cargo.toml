@@ -8,3 +8,6 @@ license.workspace = true
 log = "0.4.35"
 retour = "=0.4.0-alpha.4"
 thiserror = "2.0.21"
+
+[target."cfg(windows)".dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_LibraryLoader"] }
