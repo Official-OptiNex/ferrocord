@@ -45,6 +45,41 @@ impl SignatureSet {
         self.sigs.is_empty()
     }
 
+    /// Parses a signature file. Each non-empty, non-`#` line is
+    /// `name offset pattern...`, for example:
+    ///
+    /// ```text
+    /// # name           offset  pattern
+    /// send_message     0       55 48 89 E5 41 57 ?? ?? 48 83 EC
+    /// render_message  -4       0F 85 ?? ?? ?? ?? 48 8B 7D
+    /// ```
+    pub fn parse(text: &str) -> Result<Self> {
+        let mut set = Self::new();
+        for (n, line) in text.lines().enumerate() {
+            let line = line.split('#').next().unwrap_or("").trim();
+            if line.is_empty() {
+                continue;
+            }
+            let err = |msg: &str| Error::InvalidPattern(format!("line {}: {msg}", n + 1));
+            let mut parts = line.splitn(3, char::is_whitespace);
+            let name = parts.next().ok_or_else(|| err("missing name"))?;
+            let offset = parts
+                .next()
+                .and_then(|o| o.trim().parse::<isize>().ok())
+                .ok_or_else(|| err("missing or invalid offset"))?;
+            let pattern = parts.next().ok_or_else(|| err("missing pattern"))?;
+            if set.sigs.iter().any(|s| s.name == name) {
+                return Err(err(&format!("duplicate signature `{name}`")));
+            }
+            set.add(Signature::new(name, pattern, offset).map_err(|e| err(&e.to_string()))?);
+        }
+        Ok(set)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Signature> {
+        self.sigs.iter()
+    }
+
     /// Resolves each signature against `(base_address, bytes)` regions. A
     /// signature must match exactly once across all regions.
     pub fn resolve_in<'a>(
@@ -83,6 +118,20 @@ impl SignatureSet {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn parses_signature_file() {
+        let set = SignatureSet::parse(
+            "# comment\n\nsend_message 0 55 48 89 E5 # trailing\nrender -4 0F 85 ?? ??\n",
+        )
+        .unwrap();
+        let sigs: Vec<_> = set.iter().map(|s| (s.name.as_str(), s.offset, s.pattern.len())).collect();
+        assert_eq!(sigs, vec![("send_message", 0, 4), ("render", -4, 4)]);
+        assert!(SignatureSet::parse("nooffset").is_err());
+        assert!(SignatureSet::parse("a x 55").is_err());
+        assert!(SignatureSet::parse("a 0 55\na 0 66").is_err());
+        assert!(SignatureSet::parse("a 0 5G").is_err());
+    }
 
     #[test]
     fn resolves_unique_missing_and_ambiguous() {

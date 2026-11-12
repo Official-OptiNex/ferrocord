@@ -21,12 +21,7 @@ impl HookManager {
     /// # Safety
     /// Both pointers must be functions with identical signatures and calling
     /// conventions, and no thread may be executing `target`'s prologue.
-    pub unsafe fn install(
-        &mut self,
-        name: &str,
-        target: *const (),
-        detour: *const (),
-    ) -> Result<*const ()> {
+    pub unsafe fn install(&mut self, name: &str, target: *const (), detour: *const ()) -> Result<*const ()> {
         if self.hooks.contains_key(name) {
             return Err(Error::HookExists(name.to_owned()));
         }
@@ -42,7 +37,11 @@ impl HookManager {
     /// See [`HookManager::install`].
     pub unsafe fn set_enabled(&mut self, name: &str, enabled: bool) -> Result<()> {
         let hook = self.hooks.get(name).ok_or_else(|| Error::HookMissing(name.to_owned()))?;
-        if enabled { hook.enable()? } else { hook.disable()? }
+        if enabled {
+            hook.enable()?
+        } else {
+            hook.disable()?
+        }
         Ok(())
     }
 
@@ -90,9 +89,7 @@ mod tests {
         assert_eq!(call(2, 3), 5);
         let mut mgr = HookManager::new();
         unsafe {
-            let t = mgr
-                .install("add", ferro_test_add as *const (), doubled_add as *const ())
-                .unwrap();
+            let t = mgr.install("add", ferro_test_add as *const (), doubled_add as *const ()).unwrap();
             TRAMPOLINE.store(t as usize, Ordering::SeqCst);
             assert_eq!(call(2, 3), 10);
             assert!(matches!(

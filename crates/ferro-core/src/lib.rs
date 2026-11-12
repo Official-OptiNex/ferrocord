@@ -6,6 +6,7 @@
 
 pub mod hooks;
 pub mod memory;
+pub mod paths;
 pub mod scanner;
 pub mod signatures;
 

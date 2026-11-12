@@ -1,0 +1,8 @@
+{
+  "id": "hello",
+  "name": "Hello",
+  "version": "0.1.0",
+  "description": "Logs a greeting on startup and every event it receives.",
+  "authors": ["Loofary"],
+  "api_version": 1
+}

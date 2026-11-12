@@ -89,11 +89,24 @@ impl LogLevel {
 #[non_exhaustive]
 pub enum Event {
     /// The client finished starting and hooks are installed.
-    Ready { client_version: Option<String> },
-    MessageCreate { channel_id: String, message_id: String, author_id: String, content: String },
-    MessageDelete { channel_id: String, message_id: String },
+    Ready {
+        client_version: Option<String>,
+    },
+    MessageCreate {
+        channel_id: String,
+        message_id: String,
+        author_id: String,
+        content: String,
+    },
+    MessageDelete {
+        channel_id: String,
+        message_id: String,
+    },
     /// Fallback for experimental hooks: arbitrary name + JSON payload.
-    Custom { name: String, payload: serde_json::Value },
+    Custom {
+        name: String,
+        payload: serde_json::Value,
+    },
 }
 
 #[cfg(test)]
@@ -102,8 +115,7 @@ mod tests {
 
     #[test]
     fn manifest_roundtrip_and_validation() {
-        let m: Manifest =
-            serde_json::from_str(r#"{"id":"hello","name":"Hello","version":"0.1.0"}"#).unwrap();
+        let m: Manifest = serde_json::from_str(r#"{"id":"hello","name":"Hello","version":"0.1.0"}"#).unwrap();
         assert_eq!(m.api_version, API_VERSION);
         assert!(m.validate().is_ok());
         let bad = Manifest { id: "Bad Id".into(), ..m.clone() };

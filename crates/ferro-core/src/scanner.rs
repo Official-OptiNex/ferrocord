@@ -39,10 +39,7 @@ impl Pattern {
     }
 
     fn matches_at(&self, haystack: &[u8], at: usize) -> bool {
-        self.bytes
-            .iter()
-            .zip(&haystack[at..at + self.bytes.len()])
-            .all(|(p, b)| p.map_or(true, |p| p == *b))
+        self.bytes.iter().zip(&haystack[at..at + self.bytes.len()]).all(|(p, b)| p.is_none_or(|p| p == *b))
     }
 
     /// Offsets of every match in `haystack`.
