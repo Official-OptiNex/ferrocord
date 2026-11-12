@@ -10,8 +10,12 @@ env:
 
 jobs:
   test:
-    name: Test
-    runs-on: ubuntu-latest
+    name: Test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -20,11 +24,18 @@ jobs:
           targets: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
       - name: Format
+        if: runner.os == 'Linux'
         run: cargo fmt --all --check
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
-      - name: Test
+      - name: Unit tests
         run: cargo test --workspace
+      - name: Build loader and examples
+        run: |
+          cargo build --workspace
+          cargo build --workspace --examples
+      - name: End-to-end test
+        run: cargo test -p ferro-launcher --test e2e -- --ignored
       - name: Build example plugin
         working-directory: examples/hello-plugin
         run: cargo build --release --target wasm32-unknown-unknown

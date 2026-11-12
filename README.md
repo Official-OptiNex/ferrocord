@@ -19,8 +19,8 @@ Sandboxed WebAssembly plugins · signature-based hooking · no Electron required
 
 > [!WARNING]
 > **ferrocord is in early development.** The native client has not been publicly released yet, so ferrocord
-> cannot hook into it today. The core, plugin system and Linux loader work and are tested; client-specific
-> hooks will follow once builds are available.
+> cannot hook into it today. The core, plugin system and loader work and are tested on **Windows and Linux**;
+> client-specific hooks will follow once builds are available.
 
 > [!CAUTION]
 > Client modifications are against Discord's Terms of Service. Use ferrocord at your own risk. It is an
@@ -49,14 +49,15 @@ ferrocord is built for the new client from the start:
 - ⛽ **Fuel limits**: every call into a plugin is capped, so a stuck plugin can't hang Discord
 - 🧾 **Updatable signatures**: kept in a plain text file, so the community can fix them after a Discord update without recompiling anything
 - 🛡️ **Safe by default**: the loader stays inactive in any process that isn't the Discord client
+- 🪟 **Windows and Linux**: DLL injection on Windows 10/11, `LD_PRELOAD` on Linux
 - 🩺 **`ferrocord doctor`**: checks your setup at a glance
 
 ## ⚙️ How it works
 
 ```mermaid
 flowchart LR
-    L["ferrocord launch"] -->|LD_PRELOAD| D["Discord client"]
-    D --> F["libferro_loader"]
+    L["ferrocord launch / inject"] -->|"DLL injection (Windows)<br/>LD_PRELOAD (Linux)"| D["Discord client"]
+    D --> F["ferro_loader"]
     F --> S["signatures.txt"]
     S -->|scan client memory| H["Hook manager"]
     F --> P["Plugin host (wasmtime)"]
@@ -65,7 +66,8 @@ flowchart LR
     H -->|client events| P
 ```
 
-1. **`ferrocord launch`** starts the client with the loader library preloaded.
+1. **`ferrocord launch`** starts the client and loads the loader into it. On Windows, `ferrocord inject` can
+   also load it into a client that's already running.
 2. The **loader** starts on a background thread and sets up logging.
 3. **Plugins** in the plugins folder are compiled and initialised in their own sandboxes.
 4. **Signatures** from `signatures.txt` are resolved against the client's executable code.
@@ -73,41 +75,75 @@ flowchart LR
 
 ## 🚀 Quick start
 
-> Linux only for now. Windows and macOS support is [on the roadmap](ROADMAP.md).
+| Platform | Status | Method |
+|---|---|---|
+| 🪟 Windows 10 / 11 (x64) | ✅ Supported | DLL injection (`LoadLibraryW` on a remote thread) |
+| 🐧 Linux (x64) | ✅ Supported | `LD_PRELOAD` |
+| 🍎 macOS | 🚧 [Planned](ROADMAP.md) | |
+
+### 🪟 Windows
+
+1. Download `ferrocord-<version>-windows-x64.zip` from the
+   [latest release](https://github.com/Official-OptiNex/ferrocord/releases/latest) and extract it anywhere.
+2. Open a terminal in that folder and install the example plugin:
+
+   ```powershell
+   .\ferrocord.exe install examples\hello-plugin
+   .\ferrocord.exe doctor
+   ```
+
+3. Start Discord with ferrocord. Either **double-click `ferrocord.exe`**, which finds Discord in
+   `%LOCALAPPDATA%\Discord` automatically, or run one of:
+
+   ```powershell
+   .\ferrocord.exe launch "C:\path\to\Discord.exe"   # start the client with ferrocord
+   .\ferrocord.exe inject                             # load into an already running Discord.exe
+   ```
+
+> [!NOTE]
+> Some antivirus tools flag DLL injection, which is also used by malware. ferrocord is open source, so you
+> can read exactly what [the injector](crates/ferro-launcher/src/windows.rs) does and build it yourself.
+
+### 🐧 Linux
 
 ```bash
 git clone https://github.com/Official-OptiNex/ferrocord
 cd ferrocord
 cargo build --release
-```
-
-Install the example plugin and check your setup:
-
-```bash
 ./target/release/ferrocord install examples/hello-plugin
-./target/release/ferrocord doctor
-```
-
-Launch the client:
-
-```bash
 ./target/release/ferrocord launch /path/to/Discord
 ```
 
-You should see output like:
+### Building from source (Windows)
+
+Install [Rust](https://rustup.rs), then in PowerShell:
+
+```powershell
+git clone https://github.com/Official-OptiNex/ferrocord
+cd ferrocord
+cargo build --release
+.\target\release\ferrocord.exe install examples\hello-plugin
+.\target\release\ferrocord.exe
+```
+
+### What you should see
+
+The log (run `ferrocord paths` to find it) should show:
 
 ```text
-ferrocord INFO  ferro_loader: ferrocord v0.1.0 starting in `Discord`
-ferrocord INFO  plugin: [hello] hello from a Rust plugin!
-ferrocord INFO  ferro_plugin_host: loaded plugin `hello` v0.1.0
-ferrocord INFO  plugin: [hello] got event `ready`
+INFO  ferro_loader: ferrocord v0.1.0 starting in `Discord.exe`
+INFO  plugin: [hello] hello from a Rust plugin!
+INFO  ferro_plugin_host: loaded plugin `hello` v0.1.0
+INFO  plugin: [hello] got event `ready`
 ```
 
 ### Commands
 
 | Command | Description |
 |---|---|
-| `ferrocord launch <client> [-- args]` | Start the client with ferrocord loaded |
+| `ferrocord` | Same as `ferrocord launch` with the client found automatically |
+| `ferrocord launch [client] [-- args]` | Start the client with ferrocord loaded |
+| `ferrocord inject [name or PID]` | 🪟 Load into a running client (default `Discord.exe`) |
 | `ferrocord install <dir>` | Install a plugin folder (`manifest.json` + `plugin.wasm`) |
 | `ferrocord doctor` | Check the loader, signatures and installed plugins |
 | `ferrocord paths` | Show where data, plugins, signatures and logs live |
@@ -116,7 +152,7 @@ ferrocord INFO  plugin: [hello] got event `ready`
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `FERROCORD_DIR` | `~/.local/share/ferrocord` | Data folder (plugins, signatures, log) |
+| `FERROCORD_DIR` | `%APPDATA%\ferrocord` (Windows)<br>`~/.local/share/ferrocord` (Linux) | Data folder (plugins, signatures, log) |
 | `FERROCORD_LOG` | `info` | Log level: `error`, `warn`, `info`, `debug`, `trace` |
 | `FERROCORD_LOADER` | next to the `ferrocord` binary | Path to the loader library |
 
@@ -194,8 +230,8 @@ ferrocord/
 │   ├── ferro-core/          # scanner, memory regions, signatures, hooks, paths
 │   ├── ferro-plugin-api/    # manifest, events and the plugin ABI
 │   ├── ferro-plugin-host/   # wasmtime-based sandboxed plugin runtime
-│   ├── ferro-loader/        # library injected into the client
-│   └── ferro-launcher/      # the `ferrocord` command-line tool
+│   ├── ferro-loader/        # library injected into the client (.dll / .so)
+│   └── ferro-launcher/      # the `ferrocord` command-line tool and Windows injector
 └── examples/
     └── hello-plugin/        # minimal plugin written in Rust
 ```
@@ -203,14 +239,24 @@ ferrocord/
 ## 🛠️ Development
 
 ```bash
-cargo test --workspace         # run the test suite
-cargo clippy --workspace       # lint
-cargo fmt --all                # format
+cargo test --workspace                                # unit tests
+cargo build --workspace --examples                    # build the loader + test client
+cargo test -p ferro-launcher --test e2e -- --ignored  # end-to-end: inject and load a plugin
+cargo clippy --workspace --all-targets                # lint
+cargo fmt --all                                       # format
+```
+
+Windows builds can also be tested from Linux with MinGW and Wine. `.cargo/config.toml` already sets the linker
+and runner:
+
+```bash
+rustup target add x86_64-pc-windows-gnu
+cargo test --workspace --target x86_64-pc-windows-gnu
 ```
 
 ## 🗺️ Roadmap
 
-The short version: **Linux loader ✅ → Windows & macOS → first real hooks → plugin SDK → themes.**
+The short version: **Windows & Linux loader ✅ → first real hooks → plugin SDK → themes → macOS.**
 See [ROADMAP.md](ROADMAP.md) for details.
 
 ## 🤝 Contributing

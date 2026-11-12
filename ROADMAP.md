@@ -15,9 +15,13 @@ merged and tested.
 
 ## Phase 1: Platforms
 
-- ⬜ Windows: find `.text` via PE headers, load the loader with a proxy DLL
+- ✅ Windows 10/11: executable sections found via PE headers
+- ✅ Windows: `ferrocord launch` and `ferrocord inject` (remote `LoadLibraryW`)
+- ✅ Windows: double-click `ferrocord.exe` to find and launch Discord
+- ✅ End-to-end tests on Windows and Linux in CI
+- ✅ Release binaries for Windows and Linux on every version tag
+- ⬜ Windows: optional proxy-DLL install so Discord loads ferrocord on its own
 - ⬜ macOS: find `__TEXT,__text` via dyld, handle code signing
-- ⬜ Release binaries for every platform from CI
 
 ## Phase 2: First contact with the native client
 

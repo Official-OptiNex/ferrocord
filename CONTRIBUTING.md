@@ -10,6 +10,21 @@ cd ferrocord
 cargo test --workspace
 ```
 
+Run the end-to-end test, which injects the loader into a stand-in client:
+
+```bash
+cargo build --workspace --examples
+cargo test -p ferro-launcher --test e2e -- --ignored
+```
+
+On Linux you can also test Windows builds with MinGW and Wine
+(`apt install gcc-mingw-w64-x86-64 wine64`):
+
+```bash
+rustup target add x86_64-pc-windows-gnu
+cargo test --workspace --target x86_64-pc-windows-gnu
+```
+
 To build the example plugin you also need the WebAssembly target:
 
 ```bash
