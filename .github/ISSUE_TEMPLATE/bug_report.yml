@@ -1,0 +1,31 @@
+name: Bug report
+description: Something isn't working
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+  - type: input
+    id: version
+    attributes:
+      label: ferrocord version
+      placeholder: "0.1.0"
+  - type: input
+    id: client
+    attributes:
+      label: Client version and platform
+      placeholder: "Linux, client build 1234"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: From `ferrocord.log` (run `ferrocord paths` to find it). Remove anything personal.
+      render: text
